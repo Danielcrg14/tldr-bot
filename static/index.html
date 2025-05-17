@@ -1,44 +1,84 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TL;DR Bot</title>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    input, button { font-size: 1rem; padding: 0.5rem; }
-    #resumo { white-space: pre-wrap; margin-top: 1rem; background: #f0f0f0; padding: 1rem; border-radius: 4px; }
-  </style>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h1>TL;DR Bot</h1>
-  <p>Envie um PDF e receba um resumo:</p>
-  <input type="file" id="pdfFile" accept="application/pdf" />
-  <button id="btnSend">Enviar</button>
-  <div id="resumo"></div>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen p-4">
+  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-xl">
+    <h1 class="text-3xl font-bold text-gray-800 mb-4 text-center">TL;DR Bot</h1>
+    <p class="text-gray-600 mb-6 text-center">Envie seu PDF e receba um resumo instantâneo</p>
+    <div class="flex flex-col items-center space-y-4">
+      <input
+        id="pdfFile"
+        type="file"
+        accept="application/pdf"
+        class="block w-full text-gray-700 border border-gray-300 rounded-lg cursor-pointer bg-white p-2"
+      />
+      <button
+        id="btnSend"
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition"
+      >
+        Enviar e Resumir
+      </button>
+    </div>
+
+    <!-- Spinner oculto inicialmente -->
+    <div id="spinner" class="flex justify-center my-6 hidden">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-600"></div>
+    </div>
+
+    <div
+      id="resumo"
+      class="mt-6 bg-gray-100 p-4 rounded-lg text-gray-800 whitespace-pre-wrap max-h-96 overflow-y-auto"
+    ></div>
+  </div>
 
   <script>
-    document.getElementById("btnSend").onclick = async () => {
-      const fileInput = document.getElementById("pdfFile");
+    const btn = document.getElementById("btnSend");
+    const fileInput = document.getElementById("pdfFile");
+    const spinner = document.getElementById("spinner");
+    const resumoDiv = document.getElementById("resumo");
+
+    btn.addEventListener("click", async () => {
       if (!fileInput.files.length) {
-        alert("Selecione um PDF primeiro!");
+        alert("Por favor, selecione um arquivo PDF.");
         return;
       }
+      // Preparar UI
+      resumoDiv.textContent = "";
+      btn.disabled = true;
+      fileInput.disabled = true;
+      spinner.classList.remove("hidden");
+
+      // Montar formulário
       const form = new FormData();
       form.append("file", fileInput.files[0]);
 
-      const resp = await fetch("/upload", {
-        method: "POST",
-        body: form
-      });
+      try {
+        const resp = await fetch("/upload", {
+          method: "POST",
+          body: form,
+        });
+        const data = await resp.json();
 
-      if (!resp.ok) {
-        const err = await resp.json();
-        document.getElementById("resumo").textContent = "Erro: " + err.error;
-        return;
+        if (!resp.ok) {
+          resumoDiv.textContent = `Erro: ${data.error || resp.statusText}`;
+        } else {
+          resumoDiv.textContent = data.resumo_gerado;
+        }
+      } catch (err) {
+        resumoDiv.textContent = `Erro de rede: ${err.message}`;
+      } finally {
+        // Restaurar UI
+        spinner.classList.add("hidden");
+        btn.disabled = false;
+        fileInput.disabled = false;
       }
-      const data = await resp.json();
-      document.getElementById("resumo").textContent = data.resumo_gerado;
-    }
+    });
   </script>
 </body>
 </html>
