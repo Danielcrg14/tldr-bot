@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>TL;DR Bot</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    input, button { font-size: 1rem; padding: 0.5rem; }
+    #resumo { white-space: pre-wrap; margin-top: 1rem; background: #f0f0f0; padding: 1rem; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>TL;DR Bot</h1>
+  <p>Envie um PDF e receba um resumo:</p>
+  <input type="file" id="pdfFile" accept="application/pdf" />
+  <button id="btnSend">Enviar</button>
+  <div id="resumo"></div>
+
+  <script>
+    document.getElementById("btnSend").onclick = async () => {
+      const fileInput = document.getElementById("pdfFile");
+      if (!fileInput.files.length) {
+        alert("Selecione um PDF primeiro!");
+        return;
+      }
+      const form = new FormData();
+      form.append("file", fileInput.files[0]);
+
+      const resp = await fetch("/upload", {
+        method: "POST",
+        body: form
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        document.getElementById("resumo").textContent = "Erro: " + err.error;
+        return;
+      }
+      const data = await resp.json();
+      document.getElementById("resumo").textContent = data.resumo_gerado;
+    }
+  </script>
+</body>
+</html>
