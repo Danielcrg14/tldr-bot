@@ -1,84 +1,135 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TL;DR Bot</title>
-  <!-- Tailwind CSS via CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 flex items-center justify-center min-h-screen p-4">
-  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-xl">
-    <h1 class="text-3xl font-bold text-gray-800 mb-4 text-center">TL;DR Bot</h1>
-    <p class="text-gray-600 mb-6 text-center">Envie seu PDF e receba um resumo instantâneo</p>
-    <div class="flex flex-col items-center space-y-4">
-      <input
-        id="pdfFile"
-        type="file"
-        accept="application/pdf"
-        class="block w-full text-gray-700 border border-gray-300 rounded-lg cursor-pointer bg-white p-2"
-      />
-      <button
-        id="btnSend"
-        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition"
-      >
-        Enviar e Resumir
-      </button>
-    </div>
-
-    <!-- Spinner oculto inicialmente -->
-    <div id="spinner" class="flex justify-center my-6 hidden">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-600"></div>
-    </div>
-
-    <div
-      id="resumo"
-      class="mt-6 bg-gray-100 p-4 rounded-lg text-gray-800 whitespace-pre-wrap max-h-96 overflow-y-auto"
-    ></div>
-  </div>
-
-  <script>
-    const btn = document.getElementById("btnSend");
-    const fileInput = document.getElementById("pdfFile");
-    const spinner = document.getElementById("spinner");
-    const resumoDiv = document.getElementById("resumo");
-
-    btn.addEventListener("click", async () => {
-      if (!fileInput.files.length) {
-        alert("Por favor, selecione um arquivo PDF.");
-        return;
+<html lang="pt-BR" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TL;DR Bot – Resumidor de PDF com IA</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ícones Heroicons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+      /* Dark‑mode automático */
+      @media (prefers-color-scheme: dark) {
+        body { background-color:#1f2937; }
       }
-      // Preparar UI
-      resumoDiv.textContent = "";
-      btn.disabled = true;
-      fileInput.disabled = true;
-      spinner.classList.remove("hidden");
+    </style>
+  </head>
+  <body class="bg-gray-50 dark:bg-gray-900 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-2xl">
+      <!-- Cabeçalho -->
+      <h1 class="text-3xl font-extrabold text-center text-gray-800 dark:text-gray-50 mb-1 tracking-tight">TL;DR Bot</h1>
+      <p class="text-center text-gray-500 dark:text-gray-400 mb-6">Envie seu PDF e receba um <span class="font-medium">super‑resumo instantâneo</span></p>
 
-      // Montar formulário
-      const form = new FormData();
-      form.append("file", fileInput.files[0]);
+      <!-- Contador de créditos (placeholder) -->
+      <div id="creditBox" class="text-right text-sm text-gray-500 dark:text-gray-400 mb-2 hidden"></div>
 
-      try {
-        const resp = await fetch("/upload", {
-          method: "POST",
-          body: form,
-        });
-        const data = await resp.json();
+      <!-- Formulário -->
+      <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+        <input id="pdfFile" type="file" accept="application/pdf" class="flex-1 file:mr-4 file:py-2 file:px-4 file:border-0 file:rounded-lg file:bg-blue-600 file:text-white file:cursor-pointer file:hover:bg-blue-700 dark:file:bg-blue-500 dark:file:hover:bg-blue-600" />
+        <button id="btnSend" class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition w-full sm:w-auto">
+          <i data-feather="upload" class="w-4 h-4"></i> <span>Enviar &amp; Resumir</span>
+        </button>
+      </div>
 
-        if (!resp.ok) {
-          resumoDiv.textContent = `Erro: ${data.error || resp.statusText}`;
-        } else {
-          resumoDiv.textContent = data.resumo_gerado;
+      <!-- Spinner + Mensagem -->
+      <div id="spinner" class="flex flex-col justify-center items-center my-6 hidden">
+        <div class="animate-spin h-12 w-12 rounded-full border-4 border-blue-600 border-t-transparent mb-3"></div>
+        <span class="text-sm text-gray-500 dark:text-gray-400">🤖 Lendo seu PDF… aguarde!</span>
+      </div>
+
+      <!-- Botões de ação após resumo -->
+      <div id="actionBtns" class="flex gap-3 mb-3 hidden">
+        <button id="btnCopy" class="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md"><i data-feather="copy" class="w-4 h-4"></i>Copiar</button>
+        <button id="btnDownload" class="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-md"><i data-feather="download" class="w-4 h-4"></i>TXT</button>
+      </div>
+
+      <!-- Área do resumo -->
+      <pre id="resumo" class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-gray-800 dark:text-gray-100 whitespace-pre-wrap max-h-96 overflow-y-auto"></pre>
+    </div>
+
+    <script>
+      feather.replace(); // ícones
+
+      const btn = document.getElementById('btnSend');
+      const fileInput = document.getElementById('pdfFile');
+      const spinner = document.getElementById('spinner');
+      const resumoDiv = document.getElementById('resumo');
+      const creditBox = document.getElementById('creditBox');
+      const btnCopy = document.getElementById('btnCopy');
+      const btnDownload = document.getElementById('btnDownload');
+      const actionBtns = document.getElementById('actionBtns');
+
+      // Placeholder de créditos simples (3 grátis)
+      let used = 0;
+      const FREE_LIMIT = 3;
+      updateCredits();
+
+      btn.addEventListener('click', async () => {
+        if (!fileInput.files.length) {
+          alert('Por favor, selecione um arquivo PDF.');
+          return;
         }
-      } catch (err) {
-        resumoDiv.textContent = `Erro de rede: ${err.message}`;
-      } finally {
-        // Restaurar UI
-        spinner.classList.add("hidden");
-        btn.disabled = false;
-        fileInput.disabled = false;
+        if (used >= FREE_LIMIT) {
+          alert('Você atingiu o limite gratuito de resumos. Em breve adicionaremos planos pagos 😉');
+          return;
+        }
+
+        // Reset UI
+        resumoDiv.textContent = '';
+        actionBtns.classList.add('hidden');
+        spinner.classList.remove('hidden');
+        btn.disabled = true;
+        fileInput.disabled = true;
+
+        const form = new FormData();
+        form.append('file', fileInput.files[0]);
+
+        try {
+          const resp = await fetch('/upload', { method: 'POST', body: form });
+          const data = await resp.json();
+          if (!resp.ok) {
+            resumoDiv.textContent = `Erro: ${data.error || resp.statusText}`;
+          } else {
+            resumoDiv.textContent = data.resumo_gerado;
+            actionBtns.classList.remove('hidden');
+            used++;
+            updateCredits();
+          }
+        } catch (err) {
+          resumoDiv.textContent = `Erro de rede: ${err.message}`;
+        } finally {
+          spinner.classList.add('hidden');
+          btn.disabled = false;
+          fileInput.disabled = false;
+        }
+      });
+
+      // Copiar para clipboard
+      btnCopy.addEventListener('click', () => {
+        navigator.clipboard.writeText(resumoDiv.textContent).then(() => {
+          btnCopy.textContent = 'Copiado!';
+          setTimeout(() => (btnCopy.innerHTML = '<i data-feather="copy" class="w-4 h-4"></i>Copiar', feather.replace()), 1500);
+        });
+      });
+
+      // Baixar como TXT
+      btnDownload.addEventListener('click', () => {
+        const blob = new Blob([resumoDiv.textContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'resumo.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      function updateCredits() {
+        creditBox.textContent = `Resumos gratuitos usados: ${used}/${FREE_LIMIT}`;
+        creditBox.classList.remove('hidden');
       }
-    });
-  </script>
-</body>
+    </script>
+  </body>
 </html>
