@@ -64,83 +64,102 @@
   </div>
 
   <script>
-    feather.replace();
+feather.replace();
+const btn   = document.getElementById('btnSend');
+const fileInput  = document.getElementById('pdfFile');
+const spinner = document.getElementById('spinner');
+const resumoDiv = document.getElementById('resumo');
+const creditBox = document.getElementById('creditBox');
+const actionBtns= document.getElementById('actionBtns');
+const btnCopy   = document.getElementById('btnCopy');
+const btnTxt    = document.getElementById('btnTxt');
+const btnPdf    = document.getElementById('btnPdf');
+const btnCsv    = document.getElementById('btnCsv');
+const btnEn     = document.getElementById('btnEn');
+const btnChat   = document.getElementById('btnChat');
+// novo botão PT para voltar ao português
+const btnPt     = document.createElement('button');
+btnPt.id="btnPt";
+btnPt.className="flex items-center gap-1 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white text-sm rounded-md shadow";
+btnPt.innerHTML='<i data-feather="globe" class="w-4 h-4"></i>PT';
+actionBtns.appendChild(btnPt);
+feather.replace();
 
-    const btn = document.getElementById('btnSend');
-    const fileInput = document.getElementById('pdfFile');
-    const spinner = document.getElementById('spinner');
-    const resumoDiv = document.getElementById('resumo');
-    const creditBox = document.getElementById('creditBox');
-    const btnCopy = document.getElementById('btnCopy');
-    const btnDownload = document.getElementById('btnDownload');
-    const actionBtns = document.getElementById('actionBtns');
+const chatBox   = document.getElementById('chatBox');
+const chatInput = document.getElementById('chatInput');
+const chatSend  = document.getElementById('chatSend');
+const chatResp  = document.getElementById('chatResp');
 
-    let used = 0;
-    const FREE_LIMIT = 3;
-    updateCredits();
+let used = 0, FREE_LIMIT = 3;
+let resumoOriginal = "";   // guarda versão em PT
+let resumoEN       = "";   // guarda versão em EN
+updateCredits();
 
-    btn.addEventListener('click', async () => {
-      if (!fileInput.files.length) {
-        alert('Por favor, escolha um PDF.');
-        return;
-      }
-      if (used >= FREE_LIMIT) {
-        alert('Você usou todos os resumos gratuitos. Em breve teremos planos 😄');
-        return;
-      }
+btn.addEventListener('click', async () => {
+  if (!fileInput.files.length) { alert('Escolha um PDF'); return; }
+  if (used >= FREE_LIMIT) { alert('Limite gratuito atingido 🙂'); return; }
 
-      resumoDiv.textContent = '';
-      actionBtns.classList.add('hidden');
-      spinner.classList.remove('hidden');
-      btn.disabled = true;
-      fileInput.disabled = true;
+  resumoDiv.textContent = ''; resumoOriginal=""; resumoEN="";
+  chatResp.textContent=''; chatBox.classList.add('hidden');
+  spinner.classList.remove('hidden'); btn.disabled = true; fileInput.disabled = true;
+  const form = new FormData(); form.append('file', fileInput.files[0]);
 
-      const form = new FormData();
-      form.append('file', fileInput.files[0]);
-
-      try {
-        const resp = await fetch('/upload', { method: 'POST', body: form });
-        const data = await resp.json();
-        if (!resp.ok) {
-          resumoDiv.textContent = `Erro: ${data.error || resp.statusText}`;
-        } else {
-          resumoDiv.textContent = data.resumo_gerado;
-          actionBtns.classList.remove('hidden');
-          used++;
-          updateCredits();
-        }
-      } catch (err) {
-        resumoDiv.textContent = `Erro de rede: ${err.message}`;
-      } finally {
-        spinner.classList.add('hidden');
-        btn.disabled = false;
-        fileInput.disabled = false;
-      }
-    });
-
-    btnCopy.addEventListener('click', () => {
-      navigator.clipboard.writeText(resumoDiv.textContent).then(() => {
-        btnCopy.textContent = 'Copiado!';
-        setTimeout(() => { btnCopy.innerHTML = '<i data-feather="clipboard" class="w-4 h-4"></i>Copiar'; feather.replace(); }, 1500);
-      });
-    });
-
-    btnDownload.addEventListener('click', () => {
-      const blob = new Blob([resumoDiv.textContent], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'resumo.txt';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
-
-    function updateCredits() {
-      creditBox.textContent = `Resumos gratuitos usados: ${used}/${FREE_LIMIT}`;
-      creditBox.classList.remove('hidden');
+  try {
+    const resp = await fetch('/upload', {method:'POST', body:form});
+    const data = await resp.json();
+    if (!resp.ok) resumoDiv.textContent = `Erro: ${data.error||resp.statusText}`;
+    else {
+      resumoOriginal = data.resumo_gerado;
+      resumoDiv.textContent = resumoOriginal;
+      actionBtns.classList.remove('hidden'); used++; updateCredits();
     }
-  </script>
+  } catch(err){ resumoDiv.textContent = `Erro: ${err.message}`; }
+  finally { spinner.classList.add('hidden'); btn.disabled = false; fileInput.disabled = false; }
+});
+
+function updateCredits(){ creditBox.textContent=`Resumos gratuitos: ${used}/${FREE_LIMIT}`; creditBox.classList.remove('hidden'); }
+
+btnCopy.onclick  = ()=>{navigator.clipboard.writeText(resumoDiv.textContent).then(()=>alert('Copiado!'))};
+btnTxt.onclick   = ()=>downloadTxt();
+btnPdf.onclick   = ()=>downloadPdf();
+btnCsv.onclick   = ()=>downloadCsv();
+btnEn.onclick    = ()=>translateEn();
+btnPt.onclick    = ()=>{ if(resumoOriginal){ resumoDiv.textContent=resumoOriginal; } };
+btnChat.onclick  = ()=>chatBox.classList.toggle('hidden');
+chatSend.onclick = ()=>askQuestion();
+
+function downloadTxt(){ /* igual antes */
+  const blob=new Blob([resumoDiv.textContent],{type:'text/plain'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='resumo.txt'; a.click();
+}
+function downloadPdf(){ /* igual antes */
+  const { jsPDF } = window.jspdf; const doc=new jsPDF(); const lines=doc.splitTextToSize(resumoDiv.textContent,180); doc.text(lines,10,20); doc.save('resumo.pdf');
+}
+function downloadCsv(){ /* igual antes */
+  const rows=resumoDiv.textContent.split('
+').filter(x=>x.trim().startsWith('**'));
+  let csv='Pergunta;Resposta
+'; rows.forEach(r=>{const parts=r.replace(/\*\*/g,'').split('  '); if(parts.length>1) csv+=`${parts[0].trim()};${parts[1].trim()}
+`;});
+  const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='flashcards.csv'; a.click();
+}
+async function translateEn(){
+  if(!resumoOriginal){alert('Gere primeiro o resumo em português.');return;}
+  if(resumoEN){ resumoDiv.textContent=resumoEN; return; }
+  spinner.classList.remove('hidden');
+  const resp = await fetch('/translate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text: resumoOriginal})});
+  const data=await resp.json(); spinner.classList.add('hidden');
+  if(resp.ok){ resumoEN=data.translated; resumoDiv.textContent=resumoEN; }
+  else alert('Erro tradução');
+}
+async function askQuestion(){
+  const q=chatInput.value.trim(); if(!q) return;
+  const base = resumoDiv.textContent;
+  chatResp.textContent='Pensando...'; spinner.classList.remove('hidden');
+  const resp=await fetch('/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text: base, question:q})});
+  const data=await resp.json(); spinner.classList.add('hidden');
+  chatResp.textContent=resp.ok?data.answer:`Erro: ${data.error||resp.statusText}`;
+}
+</script>
 </body>
 </html>
