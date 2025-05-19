@@ -72,9 +72,9 @@ const resumoDiv = document.getElementById('resumo');
 const creditBox = document.getElementById('creditBox');
 const actionBtns= document.getElementById('actionBtns');
 const btnCopy   = document.getElementById('btnCopy');
-const btnTxt    = document.getElementById('btnTxt');
-const btnPdf    = document.getElementById('btnPdf');
-const btnCsv    = document.getElementById('btnCsv');
+// botões existentes na interface
+const btnDownload = document.getElementById('btnDownload');
+
 const btnEn     = document.getElementById('btnEn');
 const btnChat   = document.getElementById('btnChat');
 // novo botão PT para voltar ao português
@@ -120,9 +120,8 @@ btn.addEventListener('click', async () => {
 function updateCredits(){ creditBox.textContent=`Resumos gratuitos: ${used}/${FREE_LIMIT}`; creditBox.classList.remove('hidden'); }
 
 btnCopy.onclick  = ()=>{navigator.clipboard.writeText(resumoDiv.textContent).then(()=>alert('Copiado!'))};
-btnTxt.onclick   = ()=>downloadTxt();
-btnPdf.onclick   = ()=>downloadPdf();
-btnCsv.onclick   = ()=>downloadCsv();
+btnDownload.onclick = ()=>downloadTxt();
+
 btnEn.onclick    = ()=>translateEn();
 btnPt.onclick    = ()=>{ if(resumoOriginal){ resumoDiv.textContent=resumoOriginal; } };
 btnChat.onclick  = ()=>chatBox.classList.toggle('hidden');
